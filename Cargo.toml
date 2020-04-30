@@ -1,0 +1,15 @@
+[package]
+name = "modbus"
+version = "0.1.0"
+authors = ["Hubert Miś <hubert.mis@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+num = "0.2"
+num_enum = "0.4.3"
+num-traits = "0.2"
+num-derive = "0.3"
+crc16 = "*"
+serialport = "3.3.0"

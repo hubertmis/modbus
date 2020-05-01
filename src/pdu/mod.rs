@@ -42,6 +42,11 @@ pub trait Response: Function + Sized {
     }
 }
 
+/// Setter is a trait for Modbus requests that expect the copy of the request as the response.
+pub trait Setter: Request + Response + PartialEq {
+
+}
+
 #[derive(Clone, Copy, FromPrimitive, IntoPrimitive, PartialEq)]
 #[repr(u8)]
 pub enum FunctionCode {

@@ -2,7 +2,7 @@ pub mod rtu;
 pub mod tcp;
 
 use crate::error::Error;
-use crate::pdu::{Request, Response, RequestData, decode_req};
+use crate::pdu::{Request, Response, Setter, RequestData, decode_req};
 
 /// The trait implemented by Modbus protocol link layers 
 pub trait Transport {
@@ -42,8 +42,6 @@ pub trait Transport {
 
     /// Write a request frame and read a response frame.
     /// 
-    /// This method is the main functionality in the Modbus master mode.
-    /// 
     /// # Examples
     /// ```no_run
     /// # use modbus::Transport;
@@ -64,6 +62,39 @@ pub trait Transport {
             let rsp_pdu = self.read_rsp_pdu(&mut stream, dst)?;
             Ok(Some(Req::Rsp::decode_response(&rsp_pdu)?))
         }
+    }
+
+    /// Write a setter request and read a response frame.
+    /// 
+    /// This function handles unexpected responses
+    /// 
+    /// # Examples
+    /// ```no_run
+    /// # use modbus::Transport;
+    /// # use std::net::{IpAddr, Ipv4Addr};
+    /// #
+    /// let mut mb = modbus::tcp::Tcp::new();
+    /// let dst = modbus::tcp::Dst::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 10);
+    /// let req = modbus::WriteSingleCoilRequest::new(0x0123, true);
+    /// mb.write_req_read_rsp(&dst, &req).unwrap();
+    /// ```
+    fn write_setter_req<Req: Setter>(&mut self, dst: &Self::Dst, req: &Req) -> Result<(), Error> {
+        let req_pdu: Vec<u8> = req.encode()?;
+        let mut stream = self.write_req_pdu(dst, &req_pdu)?;
+
+        if Self::is_broadcast(dst) {
+            Ok(())
+        } else {
+            let rsp_pdu = self.read_rsp_pdu(&mut stream, dst)?;
+            let rsp = Req::decode_response(&rsp_pdu)?;
+
+            if req == &rsp {
+                Ok(())
+            } else {
+                Err(Error::InvalidData)
+            }
+        }
+
     }
 
     /// Read a request frame.

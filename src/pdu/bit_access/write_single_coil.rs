@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::pdu::{Function, FunctionCode, Request, Response};
+use crate::pdu::{Function, FunctionCode, Request, Response, Setter};
 use std::convert::{Infallible, TryFrom, TryInto};
 
 #[derive(Clone, Copy, Debug, FromPrimitive, PartialEq)]
@@ -130,6 +130,10 @@ impl Response for Message {
     fn get_exc_function_code() -> u8 {
         FunctionCode::ExcWriteSingleCoil.try_into().unwrap()
     }
+}
+
+impl Setter for Message {
+
 }
 
 #[cfg(test)]

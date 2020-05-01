@@ -8,7 +8,7 @@ use std::time::Duration;
 use super::frame::Frame;
 use super::super::Transport;
 
-const TCP_PORT: u16 = 5020;
+const TCP_PORT: u16 = 502;
 const BROADCAST_UNIT_ID: u8 = 0;
 
 /// Structure describing destination node for TCP/IP Modbus functions

@@ -1,4 +1,5 @@
 pub mod bit_access;
+pub mod hex_access;
 
 use crate::Error;
 use num_enum::IntoPrimitive;
@@ -52,11 +53,17 @@ pub trait Setter: Request + Response + PartialEq {
 pub enum FunctionCode {
     ReadCoils = 0x01,
     ReadDscrIn = 0x02,
+    ReadHldReg = 0x03,
+    ReadInReg = 0x04,
     WriteSingleCoil = 0x05,
+    WriteSingleReg = 0x06,
 
     ExcReadCoils = 0x81,
     ExcReadDscrIn = 0x82,
+    ExcReadHldReg = 0x83,
+    ExcReadInReg = 0x84,
     ExcWriteSingleCoil = 0x85,
+    ExcWriteSingleReg = 0x86,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -114,7 +121,10 @@ impl TryFrom<u8> for ExceptionCode {
 pub enum RequestData {
     ReadCoils(bit_access::read_coils::Request),
     ReadDscrIn(bit_access::read_dscr_in::Request),
+    ReadHldReg(hex_access::read_hld_reg::Request),
+    ReadInReg(hex_access::read_in_reg::Request),
     WriteSingleCoil(bit_access::write_single_coil::Message),
+    WriteSingleReg(hex_access::write_single_reg::Message),
 }
 
 pub fn decode_req(pdu: &[u8]) -> Result<RequestData, Error> {
@@ -125,7 +135,10 @@ pub fn decode_req(pdu: &[u8]) -> Result<RequestData, Error> {
     match num::FromPrimitive::from_u8(pdu[0]) {
         Some(FunctionCode::ReadCoils) => Ok(RequestData::ReadCoils(bit_access::read_coils::Request::decode(pdu)?)),
         Some(FunctionCode::ReadDscrIn) => Ok(RequestData::ReadDscrIn(bit_access::read_dscr_in::Request::decode(pdu)?)),
+        Some(FunctionCode::ReadHldReg) => Ok(RequestData::ReadHldReg(hex_access::read_hld_reg::Request::decode(pdu)?)),
+        Some(FunctionCode::ReadInReg) => Ok(RequestData::ReadInReg(hex_access::read_in_reg::Request::decode(pdu)?)),
         Some(FunctionCode::WriteSingleCoil) => Ok(RequestData::WriteSingleCoil(bit_access::write_single_coil::Message::decode(pdu)?)),
+        Some(FunctionCode::WriteSingleReg) => Ok(RequestData::WriteSingleReg(hex_access::write_single_reg::Message::decode(pdu)?)),
         _ => Err(Error::InvalidData),
     }
 }

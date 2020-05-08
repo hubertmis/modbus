@@ -161,7 +161,7 @@ impl Function for Response {
             return Err(Error::InvalidDataLength);
         }
 
-        let mut result = Self{inputs: Vec::new()};
+        let mut result = Self{inputs: Vec::with_capacity(byte_count * DSCR_PER_BYTE)};
         for byte_num in 2..2+byte_count {
             for bit_num in 0..DSCR_PER_BYTE {
                 result.inputs.push(if data[byte_num] & (1 << bit_num) != 0 { true } else { false });

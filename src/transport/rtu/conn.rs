@@ -4,6 +4,8 @@ use crate::error::Error;
 use serialport::{SerialPort, SerialPortSettings, open_with_settings};
 use std::convert::TryInto;
 use std::ffi::OsStr;
+use std::time::{Duration, Instant};
+use std::thread::sleep;
 use super::frame::Frame;
 use super::super::Transport;
 
@@ -22,6 +24,8 @@ enum Role {
 pub struct Rtu {
     serial: Box<dyn SerialPort>,
     role: Role,
+
+    last_baud_timestamp: Instant,
 }
 
 impl Rtu {
@@ -45,16 +49,35 @@ impl Rtu {
     /// let modbus = modbus::rtu::Rtu::conn("/dev/ttyUSB0", &s);
     /// ```
     pub fn conn<T: AsRef<OsStr> + ?Sized>(port: &T, settings: &SerialPortSettings) -> Result<Self, Error> {
-        Ok(Rtu{serial: open_with_settings(port, settings)?, role: Role::Master})
+        Ok(Rtu{serial:              open_with_settings(port, settings)?, 
+               role:                Role::Master, 
+               last_baud_timestamp: Instant::now()})
+        // TODO: select timeout based on spec (1.5 baud)
+    }
+
+    fn sleep_before_write(&self) {
+        // TODO: select sleep time based on spec (3.5 baud)
+        let min_delay = Duration::new(0, 100000000);
+        let curr_delay = Instant::now().duration_since(self.last_baud_timestamp);
+
+        if curr_delay < min_delay {
+            sleep(min_delay - curr_delay);
+        }
     }
 
     fn write_pdu(&mut self, unit_id: u8, pdu: &[u8]) -> Result<(), Error> {
+        self.sleep_before_write();
+
         let frame = Frame::new(unit_id, pdu);
         self.serial.write_all(&frame.encode()?)?;
+
+        self.serial.flush()?;
+        self.last_baud_timestamp = Instant::now();
+
         Ok(())
     }
 
-    fn read_pdu(&mut self, expected_unit_id: u8) -> Result<Vec<u8>, Error> {
+    fn read_pdu(&mut self, expected_unit_id: u8, infinitely: bool) -> Result<Vec<u8>, Error> {
         let mut rsp_frame = Vec::new();
         let mut rsp_byte: [u8; 1] = [0];
 
@@ -63,11 +86,16 @@ impl Rtu {
                 Ok(num_bytes) => {
                     assert_eq!(num_bytes, 1);
                     rsp_frame.push(rsp_byte[0]);
+
+                    self.last_baud_timestamp = Instant::now();
                 }
                 Err(err) => {
                     match err.kind() {
-                        // TODO: Make timeout optional
                         std::io::ErrorKind::TimedOut => {
+                            if infinitely && rsp_frame.len() == 0 {
+                                continue;
+                            }
+
                             let frame = Frame::decode(&rsp_frame)?;
                             
                             if frame.is_address(expected_unit_id) {
@@ -84,7 +112,6 @@ impl Rtu {
             }
         }
     }
-
 }
 
 impl Transport for Rtu {
@@ -116,12 +143,18 @@ impl Transport for Rtu {
     }
 
     fn read_rsp_pdu(&mut self, _: &mut Self::Stream, src: &Self::Dst) -> Result<Vec<u8>, Error> {
-        self.read_pdu(*src)
+        self.read_pdu(*src, false)
     }
 
     fn read_req_pdu(&mut self) -> Result<(Vec<u8>, Self::Stream), Error> {
         if let Role::Slave(unit_id) = self.role {
-            Ok((self.read_pdu(unit_id)?, ()))
+            loop {
+                let result = self.read_pdu(unit_id, true);
+
+                if let Ok(result) = result {
+                    return Ok((result, ()));
+                }
+            }
         } else {
             Err(Error::InvalidValue)
         }

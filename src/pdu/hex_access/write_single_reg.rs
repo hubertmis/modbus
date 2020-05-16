@@ -3,7 +3,7 @@ use crate::pdu::{Function, FunctionCode, Request, Response, Setter};
 use std::convert::TryInto;
 
 /// Write Single Register request or response function
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Message {
     address: u16,
     value: u16,
@@ -80,7 +80,9 @@ impl Response for Message {
 }
 
 impl Setter for Message {
-
+    fn create_expected_response(&self) -> Self::Rsp {
+        self.clone()
+    }
 }
 
 #[cfg(test)]

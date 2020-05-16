@@ -56,7 +56,7 @@ impl TryFrom<Value> for bool {
 }
 
 /// Write Single Coil request or response function
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Message {
     address: u16,
     value: Value,
@@ -133,7 +133,9 @@ impl Response for Message {
 }
 
 impl Setter for Message {
-
+    fn create_expected_response(&self) -> Self::Rsp {
+        self.clone()
+    }
 }
 
 #[cfg(test)]

@@ -78,7 +78,9 @@ pub trait Transport {
     /// let req = modbus::WriteSingleCoilRequest::new(0x0123, true);
     /// mb.write_req_read_rsp(&dst, &req).unwrap();
     /// ```
-    fn write_setter_req<Req: Setter>(&mut self, dst: &Self::Dst, req: &Req) -> Result<(), Error> {
+    fn write_setter_req<Req: Setter>(&mut self, dst: &Self::Dst, req: &Req) -> Result<(), Error> 
+        where Req::Rsp: PartialEq 
+    {
         let req_pdu: Vec<u8> = req.encode()?;
         let mut stream = self.write_req_pdu(dst, &req_pdu)?;
 
@@ -86,15 +88,15 @@ pub trait Transport {
             Ok(())
         } else {
             let rsp_pdu = self.read_rsp_pdu(&mut stream, dst)?;
-            let rsp = Req::decode_response(&rsp_pdu)?;
+            let rsp = Req::Rsp::decode_response(&rsp_pdu)?;
+            let exp_rsp = req.create_expected_response();
 
-            if req == &rsp {
+            if exp_rsp == rsp {
                 Ok(())
             } else {
                 Err(Error::InvalidData)
             }
         }
-
     }
 
     /// Read a request frame.

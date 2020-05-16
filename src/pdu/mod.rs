@@ -43,9 +43,9 @@ pub trait Response: Function + Sized {
     }
 }
 
-/// Setter is a trait for Modbus requests that expect the copy of the request as the response.
-pub trait Setter: Request + Response + PartialEq {
-
+/// Setter is a trait for Modbus requests that expect known response.
+pub trait Setter where Self: Request, Self::Rsp: PartialEq {
+    fn create_expected_response(&self) -> Self::Rsp;
 }
 
 #[derive(Clone, Copy, FromPrimitive, IntoPrimitive, PartialEq)]
@@ -57,6 +57,7 @@ pub enum FunctionCode {
     ReadInReg = 0x04,
     WriteSingleCoil = 0x05,
     WriteSingleReg = 0x06,
+    WriteMultiReg = 0x10,
 
     ExcReadCoils = 0x81,
     ExcReadDscrIn = 0x82,
@@ -64,6 +65,7 @@ pub enum FunctionCode {
     ExcReadInReg = 0x84,
     ExcWriteSingleCoil = 0x85,
     ExcWriteSingleReg = 0x86,
+    ExcWriteMultiReg = 0x90,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -125,6 +127,7 @@ pub enum RequestData {
     ReadInReg(hex_access::read_in_reg::Request),
     WriteSingleCoil(bit_access::write_single_coil::Message),
     WriteSingleReg(hex_access::write_single_reg::Message),
+    WriteMultiReg(hex_access::write_multi_reg::Request),
 }
 
 pub fn decode_req(pdu: &[u8]) -> Result<RequestData, Error> {
@@ -139,6 +142,7 @@ pub fn decode_req(pdu: &[u8]) -> Result<RequestData, Error> {
         Some(FunctionCode::ReadInReg) => Ok(RequestData::ReadInReg(hex_access::read_in_reg::Request::decode(pdu)?)),
         Some(FunctionCode::WriteSingleCoil) => Ok(RequestData::WriteSingleCoil(bit_access::write_single_coil::Message::decode(pdu)?)),
         Some(FunctionCode::WriteSingleReg) => Ok(RequestData::WriteSingleReg(hex_access::write_single_reg::Message::decode(pdu)?)),
+        Some(FunctionCode::WriteMultiReg) => Ok(RequestData::WriteMultiReg(hex_access::write_multi_reg::Request::decode(pdu)?)),
         _ => Err(Error::InvalidData),
     }
 }

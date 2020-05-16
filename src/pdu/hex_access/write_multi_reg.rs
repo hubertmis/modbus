@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::pdu::{Function, FunctionCode, Request as ReqT, Response as RspT};
+use crate::pdu::{Function, FunctionCode, Request as ReqT, Response as RspT, Setter};
 use std::convert::TryInto;
 
 const MIN_QUANTITY: usize = 1;
@@ -103,6 +103,12 @@ impl Function for Request {
 
 impl ReqT for Request {
     type Rsp = Response;
+}
+
+impl Setter for Request {
+    fn create_expected_response(&self) -> Self::Rsp {
+        Response::new(self.address, self.values.len() as u16)
+    }
 }
 
 /// Write Multiple Registers response function

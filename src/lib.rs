@@ -7,6 +7,7 @@ mod pdu;
 mod transport;
 
 pub use error::Error;
+pub use pdu::Request;
 pub use pdu::RequestData;
 
 pub use pdu::bit_access::read_coils::Request as ReadCoilsRequest;
